@@ -2,7 +2,7 @@
 
 #Params For This Script File :
 param (
-    [int]$TimeoutInSeconds = 60  # Default value is 60 seconds (1 minute)
+    [int]$TimeoutInMinutes = 1 # Default 1 minutes
 )
 
 # Required for Set-ScreenSaverTimeout
@@ -24,11 +24,12 @@ $signature = @"
 [DllImport("user32.dll")]
 public static extern bool SystemParametersInfo(int uAction, int uParam, ref int lpvParam, int flags );
 "@
+
 # Required For Set-OnResumeDisplayLogon
 $systemParamInfo = Add-Type -memberDefinition  $signature -Name ScreenSaver -passThru
 
 Function Set-ScreenSaverTimeout {
-    Param ([Int32]$value = 10)  # Timeout in minutes
+    Param ([Int32]$value = 1)  # Timeout in minutes
     
     $seconds = $value * 60  # Convert minutes to seconds
     $nullVar = 0
@@ -48,26 +49,17 @@ Function Set-OnResumeDisplayLogon
 
 function Set-ScreenTimeout {
     param (
-        [int]$TimeoutInSeconds
+        [int]$TimeoutInMinutes
     )
 
-    # Define the registry paths for screen timeout settings
-    $acKey = "HKCU:\Control Panel\Desktop"
-    $dcKey = "HKCU:\Control Panel\PowerCfg"
+    # Set the sleep timeout for AC power (plugged in)
+    powercfg /change standby-timeout-ac $TimeoutInMinutes
 
-    # Set the screen timeout for AC power (plugged in)
-    Set-ItemProperty -Path $acKey -Name ScreenSaveTimeOut -Value $TimeoutInSeconds
-
-    # Set the screen timeout for battery power
-    Set-ItemProperty -Path $dcKey -Name ScreenSaveTimeOut -Value $TimeoutInSeconds
-
-    # Confirm the settings have been applied (optional)
-    Write-Output "Screen timeout settings have been applied to both AC and DC power:"
-    Get-ItemProperty -Path $acKey -Name ScreenSaveTimeOut
-    Get-ItemProperty -Path $dcKey -Name ScreenSaveTimeOut
+    # Set the sleep timeout for battery power
+    powercfg /change standby-timeout-dc $TimeoutInMinutes
 }
 
 # Function Call.
 Set-ScreenSaverTimeout 
 Set-OnResumeDisplayLogon
-Set-ScreenTimeout -TimeoutInSeconds $TimeoutInSeconds
+Set-ScreenTimeout -TimeoutInMinutes $TimeoutInMinutes
